@@ -92,6 +92,13 @@ if( $effect=~/^overlay$/i ){
 	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v] trim=$tmp_duration1:$d1, setpts=PTS-STARTPTS [a]; [1:v] trim=duration=$duration, setpts=PTS-STARTPTS[b]; [a][b] overlay=x='\\''if(lte(-w+t*w,0),(1-t)*w,0)'\\'':y=0[c]; [0:v] trim=0:$tmp_duration1, setpts=PTS-STARTPTS [a2]; [1:v] trim=$duration:$d2, setpts=PTS-STARTPTS [b2]; [a2][c][b2] concat=n=3:v=1[v]' -map '[v]' $out";
 }
 
+if( $effect=~/^none$/i || $effect=~/^concat$/i ){
+	# simple concat
+	$cmd="$FFMPEG -loglevel warning -y $v1 -i $v2 -filter_complex '[0:v:0][1:v:0] concat=n=2:v=1 [v]' -map '[v]' -c:v libx264  -pix_fmt yuv420p -map '[v]' $out";
+}
+
+
+
 if( $show ) {
 	print "$cmd\n" ;
 } else {
@@ -106,7 +113,7 @@ sub show_help {
 print STDERR "
 Concat two video file with transition effects:
 fade (default), crossfade, overlay
-Usage: $0 --v1=video1.mp4 --v2=video2.avi --out=video_outfile.mp4 [ --effect={fade|crossfade|overlay} ] [ --duration=duration ] [--show] [--help]
+Usage: $0 --v1=video1.mp4 --v2=video2.avi --out=video_outfile.mp4 [ --effect={fade|crossfade|overlay|none|concat} ] [ --duration=duration ] [--show] [--help]
 where:
 	effect - used effect( fade default )
 	duration - the time of effect in secounds ( 1 sec default )
