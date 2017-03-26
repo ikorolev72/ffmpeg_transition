@@ -40,10 +40,10 @@ my $streams_info_1=`$cmd`;
 $streams_info_1=~/\s+duration=(\d*\.\d+)/;
 my $d1=$1;
 $streams_info_1=~/\s+width=(\d+)/;
-my $width=$1 || 1280;
+my $width=$1 || 1920;
 
 $streams_info_1=~/\s+height=(\d+)/;
-my $height=$1 || 720;
+my $height=$1 || 1080;
 
 $cmd="$FFPROBE -v error -show_streams -of default=noprint_wrappers=1 $v2";
 my $streams_info_2=`$cmd`;
@@ -76,25 +76,26 @@ if( $effect=~/^crossfade$/i ){
 	my $tmp_duration1=$d1+$d2-$duration;
 	my $tmp_duration2=$d1-$duration;
 
-	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex 'color=black:${width}x${height}:d=$tmp_duration1 [base]; [0:v]setpts=PTS-STARTPTS[v0]; [1:v]format=yuva420p,fade=in:st=0:d=$duration:alpha=1, setpts=PTS-STARTPTS+($tmp_duration2/TB)[v1]; [base][v0]overlay[tmp]; [tmp][v1]overlay,format=yuv420p[fv]' -map [fv] $out";
+	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex 'color=black:${width}x${height}:d=$tmp_duration1 [base]; [0:v]setpts=PTS-STARTPTS[v0]; [1:v]format=yuva420p,fade=in:st=0:d=$duration:alpha=1, setpts=PTS-STARTPTS+($tmp_duration2/TB)[v1]; [base][v0]overlay[tmp]; [tmp][v1]overlay,format=yuv420p[fv]' -map [fv]  -threads 4 $out";
 }
 
 if( $effect=~/^fade$/i ){
 	my $tmp_duration1=$d1-$duration;
 
-	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v] fade=t=out:st=$tmp_duration1:d=$duration [v0]; [1:v] fade=t=in:st=0:d=$duration [v1]; [v0][v1] concat=n=2:v=1[v]' -map '[v]' $out";
+	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v] scale=${width}x${height},fade=t=out:st=$tmp_duration1:d=$duration [v0]; [1:v] fade=t=in:st=0:d=$duration [v1]; [v0][v1] concat=n=2:v=1[v]' -map '[v]' -threads 4 $out";
 }
 
 
 if( $effect=~/^overlay$/i ){
 	my $tmp_duration1=$d1-$duration;
 
-	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v] trim=$tmp_duration1:$d1, setpts=PTS-STARTPTS [a]; [1:v] trim=duration=$duration, setpts=PTS-STARTPTS[b]; [a][b] overlay=x='\\''if(lte(-w+t*w,0),(1-t)*w,0)'\\'':y=0[c]; [0:v] trim=0:$tmp_duration1, setpts=PTS-STARTPTS [a2]; [1:v] trim=$duration:$d2, setpts=PTS-STARTPTS [b2]; [a2][c][b2] concat=n=3:v=1[v]' -map '[v]' $out";
+	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v] trim=$tmp_duration1:$d1, setpts=PTS-STARTPTS [a]; [1:v] trim=duration=$duration, setpts=PTS-STARTPTS[b]; [a][b] overlay=x='\\''if(lte(-w+t*w,0),(1-t)*w,0)'\\'':y=0[c]; [0:v] trim=0:$tmp_duration1, setpts=PTS-STARTPTS [a2]; [1:v] trim=$duration:$d2, setpts=PTS-STARTPTS [b2]; [a2][c][b2] concat=n=3:v=1[v]' -map '[v]' -threads 4 $out";
 }
 
 if( $effect=~/^none$/i || $effect=~/^concat$/i ){
 	# simple concat
-	$cmd="$FFMPEG -loglevel warning -y $v1 -i $v2 -filter_complex '[0:v:0][1:v:0] concat=n=2:v=1 [v]' -map '[v]' -c:v libx264  -pix_fmt yuv420p -map '[v]' $out";
+	$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v][1:v] concat=n=2:v=1 [v]' -map '[v]' -c:v libx264  -pix_fmt yuv420p -threads 4 $out";
+	#$cmd="$FFMPEG -loglevel warning -y -i $v1 -i $v2 -filter_complex '[0:v:0][1:v:0] concat [v]' -map '[v]' -c:v libx264  -pix_fmt yuv420p -threads 4 $out";
 }
 
 
